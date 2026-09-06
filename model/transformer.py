@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from .attention import MultiHeadAttention
 
 class RMSNorm(nn.Module):
@@ -9,8 +10,7 @@ class RMSNorm(nn.Module):
         self.weight = nn.Parameter(torch.ones(dim))
 
     def forward(self, x):
-        norm = torch.mean(x ** 2, dim=-1, keepdim=True)
-        return x * torch.rsqrt(norm + self.eps) * self.weight
+        return x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps) * self.weight
 
 class SwiGLU(nn.Module):
     def __init__(self, dim, hidden_dim):
@@ -20,34 +20,32 @@ class SwiGLU(nn.Module):
         self.w3 = nn.Linear(dim, hidden_dim, bias=False)
 
     def forward(self, x):
-        return self.w2(nn.functional.silu(self.w1(x)) * self.w3(x))
+        return self.w2(F.silu(self.w1(x)) * self.w3(x))
 
 class TransformerBlock(nn.Module):
-    def __init__(self, dim, num_heads, hidden_dim):
+    def __init__(self, dim, heads, hidden_dim):
         super().__init__()
-        self.attention = MultiHeadAttention(dim, num_heads)
-        self.feed_forward = SwiGLU(dim, hidden_dim)
-        self.attention_norm = RMSNorm(dim)
-        self.ffn_norm = RMSNorm(dim)
+        self.attn = MultiHeadAttention(dim, heads)
+        self.ff = SwiGLU(dim, hidden_dim)
+        self.norm1 = RMSNorm(dim)
+        self.norm2 = RMSNorm(dim)
 
-    def forward(self, x, start_pos=0, kv_cache=None):
-        h = x + self.attention(self.attention_norm(x), start_pos, kv_cache)
-        out = h + self.feed_forward(self.ffn_norm(h))
-        return out
+    def forward(self, x, pos=0, kv_cache=None):
+        x = x + self.attn(self.norm1(x), pos, kv_cache)
+        x = x + self.ff(self.norm2(x))
+        return x
 
 class Transformer(nn.Module):
-    def __init__(self, vocab_size, dim, num_layers, num_heads, hidden_dim):
+    def __init__(self, vocab_size, dim, layers, heads, hidden_dim):
         super().__init__()
-        self.tok_embeddings = nn.Embedding(vocab_size, dim)
-        self.layers = nn.ModuleList([TransformerBlock(dim, num_heads, hidden_dim) for _ in range(num_layers)])
+        self.emb = nn.Embedding(vocab_size, dim)
+        self.layers = nn.ModuleList([TransformerBlock(dim, heads, hidden_dim) for _ in range(layers)])
         self.norm = RMSNorm(dim)
-        self.output = nn.Linear(dim, vocab_size, bias=False)
+        self.out = nn.Linear(dim, vocab_size, bias=False)
 
-    def forward(self, tokens, start_pos=0, kv_caches=None):
-        h = self.tok_embeddings(tokens)
-        
+    def forward(self, x, pos=0, caches=None):
+        h = self.emb(x)
         for i, layer in enumerate(self.layers):
-            cache = kv_caches[i] if kv_caches is not None else None
-            h = layer(h, start_pos, cache)
-            
-        return self.output(self.norm(h))
+            cache = caches[i] if caches else None
+            h = layer(h, pos, cache)
+        return self.out(self.norm(h))
