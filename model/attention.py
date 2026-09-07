@@ -2,6 +2,25 @@ import torch
 import torch.nn as nn
 import math
 
+class KVCache:
+    def __init__(self):
+        self.key = None
+        self.value = None
+
+    @property
+    def length(self):
+        return 0 if self.key is None else self.key.size(2)
+
+    def update(self, key, value):
+        if self.key is None:
+            self.key, self.value = key, value
+        else:
+            if self.key.shape[:2] != key.shape[:2] or self.key.shape[-1] != key.shape[-1]:
+                raise ValueError("cache shape is incompatible with incoming keys")
+            self.key = torch.cat((self.key, key), dim=2)
+            self.value = torch.cat((self.value, value), dim=2)
+        return self.key, self.value
+
 class RoPE(nn.Module):
     def __init__(self, dim, max_len=2048):
         super().__init__()
@@ -15,6 +34,8 @@ class RoPE(nn.Module):
 
     def forward(self, q, k, pos):
         seq_len = q.shape[2]
+        if pos < 0 or pos + seq_len > self.cos.size(2):
+            raise ValueError("position range exceeds configured RoPE length")
         c = self.cos[:, :, pos:pos+seq_len]
         s = self.sin[:, :, pos:pos+seq_len]
         
@@ -27,8 +48,12 @@ class RoPE(nn.Module):
 class MultiHeadAttention(nn.Module):
     def __init__(self, dim, num_heads):
         super().__init__()
+        if dim % num_heads:
+            raise ValueError("dim must be divisible by num_heads")
         self.num_heads = num_heads
         self.head_dim = dim // num_heads
+        if self.head_dim % 2:
+            raise ValueError("head dimension must be even for RoPE")
         
         self.qkv = nn.Linear(dim, 3 * dim, bias=False)
         self.out = nn.Linear(dim, dim, bias=False)
@@ -42,19 +67,20 @@ class MultiHeadAttention(nn.Module):
         k = k.view(bsz, seq, self.num_heads, self.head_dim).transpose(1, 2)
         v = v.view(bsz, seq, self.num_heads, self.head_dim).transpose(1, 2)
         
-        q, k = self.rope(q, k, pos)
+        start = kv_cache.length if kv_cache is not None else pos
+        q, k = self.rope(q, k, start)
         
         if kv_cache is not None:
-            k_c, v_c = kv_cache
-            k_c[:, :, pos:pos+seq] = k
-            v_c[:, :, pos:pos+seq] = v
-            k = k_c[:, :, :pos+seq]
-            v = v_c[:, :, :pos+seq]
-
-        scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.head_dim)
+            k, v = kv_cache.update(k, v)
         
-        mask = torch.tril(torch.ones(seq, seq, device=x.device))
-        scores.masked_fill_(mask == 0, float("-inf"))
+        scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.head_dim)
+
+        key_positions = torch.arange(k.size(2), device=x.device)
+        if kv_cache is None:
+            key_positions = key_positions + start
+        query_positions = start + torch.arange(seq, device=x.device)
+        causal = key_positions.unsqueeze(0) <= query_positions.unsqueeze(1)
+        scores.masked_fill_(~causal[None, None], float("-inf"))
         
         attn = torch.softmax(scores, dim=-1)
         out = torch.matmul(attn, v)

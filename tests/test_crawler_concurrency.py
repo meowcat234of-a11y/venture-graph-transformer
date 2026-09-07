@@ -1,10 +1,12 @@
 import unittest
 import asyncio
+import httpx
 from pipeline.async_crawler import AsyncCrawler
 
 class TestAsyncCrawler(unittest.TestCase):
     def test_crawl(self):
-        crawler = AsyncCrawler(rate_limit=2)
+        transport = httpx.MockTransport(lambda request: httpx.Response(200, text="ok"))
+        crawler = AsyncCrawler(rate_limit=2, transport=transport)
         urls = ["http://example.com"]
         
         results = asyncio.run(crawler.crawl(urls))

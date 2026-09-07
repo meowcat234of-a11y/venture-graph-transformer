@@ -2,8 +2,12 @@ import asyncio
 import httpx
 
 class AsyncCrawler:
-    def __init__(self, rate_limit=5):
+    def __init__(self, rate_limit=5, timeout=10.0, transport=None):
+        if rate_limit < 1:
+            raise ValueError("rate_limit must be positive")
         self.semaphore = asyncio.Semaphore(rate_limit)
+        self.timeout = timeout
+        self.transport = transport
 
     async def fetch(self, url, client):
         async with self.semaphore:
@@ -11,11 +15,11 @@ class AsyncCrawler:
                 response = await client.get(url, timeout=10.0)
                 response.raise_for_status()
                 return {"url": url, "content": response.text, "status": response.status_code}
-            except Exception as e:
-                return {"url": url, "error": str(e)}
+            except httpx.HTTPError as exc:
+                return {"url": url, "error": str(exc)}
 
     async def crawl(self, urls):
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=self.timeout, transport=self.transport) as client:
             tasks = [self.fetch(url, client) for url in urls]
             return await asyncio.gather(*tasks)
 
