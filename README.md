@@ -39,3 +39,7 @@ Install with `pip install -e .` and run `python -m unittest discover tests`.
 ## Dashboard
 
 Launch `streamlit run dashboard/app.py` to explore the included demo graph or upload an edge-list CSV with `source`, `target`, and optional `weight` columns.
+
+## Codespaces
+
+Open **Code → Codespaces → Create codespace on master** for a browser-based VS Code environment. The dev container installs the project and the default **Run tests** task validates it; use **Run dashboard** to launch Streamlit and open the forwarded port.
