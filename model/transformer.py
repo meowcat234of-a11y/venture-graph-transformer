@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 from .attention import KVCache, MultiHeadAttention
+
 
 class RMSNorm(nn.Module):
     def __init__(self, dim, eps=1e-6):
@@ -12,6 +14,7 @@ class RMSNorm(nn.Module):
     def forward(self, x):
         return x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps) * self.weight
 
+
 class SwiGLU(nn.Module):
     def __init__(self, dim, hidden_dim):
         super().__init__()
@@ -21,6 +24,7 @@ class SwiGLU(nn.Module):
 
     def forward(self, x):
         return self.w2(F.silu(self.w1(x)) * self.w3(x))
+
 
 class TransformerBlock(nn.Module):
     def __init__(self, dim, heads, hidden_dim):
@@ -35,11 +39,14 @@ class TransformerBlock(nn.Module):
         x = x + self.ff(self.norm2(x))
         return x
 
+
 class Transformer(nn.Module):
     def __init__(self, vocab_size, dim, layers, heads, hidden_dim):
         super().__init__()
         self.emb = nn.Embedding(vocab_size, dim)
-        self.layers = nn.ModuleList([TransformerBlock(dim, heads, hidden_dim) for _ in range(layers)])
+        self.layers = nn.ModuleList(
+            [TransformerBlock(dim, heads, hidden_dim) for _ in range(layers)]
+        )
         self.norm = RMSNorm(dim)
         self.out = nn.Linear(dim, vocab_size, bias=False)
 

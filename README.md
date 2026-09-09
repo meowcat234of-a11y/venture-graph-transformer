@@ -1,45 +1,63 @@
 # Venture Graph Transformer
 
-[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](#) [![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?logo=pytorch&logoColor=white)](#) [![NetworkX](https://img.shields.io/badge/NetworkX-graph%20analytics-2ea44f)](#)
+[![CI](https://github.com/meowcat234of-a11y/venture-graph-transformer/actions/workflows/ci.yml/badge.svg)](https://github.com/meowcat234of-a11y/venture-graph-transformer/actions/workflows/ci.yml)
+![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB)
 
-A dual-layer system combining a from-scratch decoder-only transformer with an asynchronous graph pipeline to ingest, parse, and score startup momentum.
+A systems-oriented prototype combining a decoder-only transformer with an
+asynchronous relationship-graph pipeline and an interactive analytics dashboard.
+
+## What it demonstrates
+
+- A decoder built from RMSNorm, rotary position embeddings, SwiGLU blocks, and
+  causal multi-head attention.
+- Stateful key-value caching with tests against full-sequence decoding.
+- Bounded-concurrency HTTP collection and deterministic entity extraction.
+- Directed relationship graphs, weighted talent-flow metrics, and PageRank.
+- A Streamlit dashboard for ranking company momentum from uploaded edge lists.
+
+## Quick start
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+python -m unittest discover tests
+```
+
+Launch the dashboard with:
+
+```bash
+streamlit run dashboard/app.py
+```
+
+Upload a CSV containing `source`, `target`, and an optional numeric `weight`
+column. The app uses a small built-in graph when no file is supplied.
+
+## Decoder notes
+
+RoPE applies a position-dependent rotation to each query and key, while the
+feed-forward block uses
+
+$$
+\operatorname{SwiGLU}(x)=
+W_2\left(\operatorname{SiLU}(W_1x)\odot W_3x\right).
+$$
+
+During incremental generation, every layer retains prior keys and values so
+only the newest token needs to be projected.
+
+## Repository layout
+
+```text
+model/       decoder architecture, tokenizer, and KV cache
+pipeline/    asynchronous collection and graph construction
+analytics/   momentum and talent-flow metrics
+dashboard/   Streamlit application and input validation
+tests/       deterministic unit tests
+```
 
 ## Scope
 
-The decoder validates architecture and inference mechanics, including cache-equivalent decoding. It is untrained; generated tokens are diagnostic outputs rather than meaningful language-model completions.
-
-## Setup
-```bash
-pip install -e .
-```
-
-## Structure
-- `model/`: From-scratch transformer architecture with RoPE, SwiGLU, RMSNorm
-- `pipeline/`: Async graph crawling and entity extraction
-- `analytics/`: Momentum scoring and talent flow analysis
-- `dashboard/`: Streamlit dashboard
-- `tests/`: Basic structural tests
-
-## Decoder architecture
-
-RoPE applies a position-dependent rotation to queries and keys:
-
-$$\operatorname{RoPE}(x_m)=x_m e^{im\theta}.$$
-
-The feed-forward block uses SwiGLU:
-
-$$\operatorname{SwiGLU}(x)=W_2\left(\operatorname{SiLU}(W_1x)\odot W_3x\right).$$
-
-During generation, each layer retains its past keys and values so only the newest token is projected at each decoding step.
-
-## Testing
-
-Install with `pip install -e .` and run `python -m unittest discover tests`.
-
-## Dashboard
-
-Launch `streamlit run dashboard/app.py` to explore the included demo graph or upload an edge-list CSV with `source`, `target`, and optional `weight` columns.
-
-## Codespaces
-
-Open **Code → Codespaces → Create codespace on master** for a browser-based VS Code environment. The dev container installs the project and the default **Run tests** task validates it; use **Run dashboard** to launch Streamlit and open the forwarded port.
+The decoder is intentionally untrained; generated tokens validate architecture
+and inference mechanics rather than language quality. The crawler and entity
+extractor are research components, not a production ingestion service.

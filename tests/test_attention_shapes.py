@@ -1,7 +1,10 @@
-import torch
 import unittest
+
+import torch
+
 from model.attention import MultiHeadAttention
 from model.transformer import Transformer
+
 
 class TestAttentionShapes(unittest.TestCase):
     def test_multihead_attention(self):
@@ -9,10 +12,10 @@ class TestAttentionShapes(unittest.TestCase):
         num_heads = 8
         seq_len = 32
         bsz = 2
-        
+
         mha = MultiHeadAttention(dim, num_heads)
         x = torch.randn(bsz, seq_len, dim)
-        
+
         out = mha(x)
         self.assertEqual(out.shape, (bsz, seq_len, dim))
 
@@ -27,6 +30,7 @@ class TestAttentionShapes(unittest.TestCase):
         cached_logits = model(tokens[:, 3:], caches=caches)
 
         self.assertTrue(torch.allclose(cached_logits, full_logits[:, 3:], atol=1e-5))
+
 
 if __name__ == "__main__":
     unittest.main()
