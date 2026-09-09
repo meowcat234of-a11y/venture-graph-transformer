@@ -11,5 +11,11 @@ dependencies = [
     "torch>=2.0.0",
     "networkx>=3.0",
     "httpx>=0.24.0",
+    "pandas>=2.0.0",
     "streamlit>=1.20.0"
 ]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["analytics*", "dashboard*", "model*", "pipeline*"]
+namespaces = true

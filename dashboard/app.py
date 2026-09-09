@@ -4,18 +4,7 @@ import pandas as pd
 
 from analytics.momentum_scorer import calculate_momentum
 from analytics.talent_flow import analyze_talent_flow
-
-
-def build_graph(edges):
-    required = {"source", "target"}
-    if not required.issubset(edges.columns):
-        raise ValueError("CSV must include source and target columns")
-
-    graph = nx.DiGraph()
-    for edge in edges.itertuples(index=False):
-        weight = float(getattr(edge, "weight", 1.0))
-        graph.add_edge(edge.source, edge.target, weight=weight)
-    return graph
+from dashboard.graph import build_graph
 
 
 st.set_page_config(page_title="Venture Graph Transformer", layout="wide")
