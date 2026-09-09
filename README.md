@@ -3,10 +3,12 @@
 [![CI](https://github.com/meowcat234of-a11y/venture-graph-transformer/actions/workflows/ci.yml/badge.svg)](https://github.com/meowcat234of-a11y/venture-graph-transformer/actions/workflows/ci.yml)
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB)
 
-A systems-oriented prototype combining a decoder-only transformer with an
-asynchronous relationship-graph pipeline and an interactive analytics dashboard.
+This repo grew out of two things I wanted to understand by building them: the
+inside of a decoder-only transformer and the mechanics of turning messy
+relationship data into a useful graph. The result is part model exercise, part
+data pipeline, with a small Streamlit app for exploring the output.
 
-## What it demonstrates
+## What's included
 
 - A decoder built from RMSNorm, rotary position embeddings, SwiGLU blocks, and
   causal multi-head attention.
@@ -33,7 +35,7 @@ streamlit run dashboard/app.py
 Upload a CSV containing `source`, `target`, and an optional numeric `weight`
 column. The app uses a small built-in graph when no file is supplied.
 
-## Decoder notes
+## What I focused on in the decoder
 
 RoPE applies a position-dependent rotation to each query and key, while the
 feed-forward block uses
@@ -56,8 +58,10 @@ dashboard/   Streamlit application and input validation
 tests/       deterministic unit tests
 ```
 
-## Scope
+## What to expect
 
-The decoder is intentionally untrained; generated tokens validate architecture
-and inference mechanics rather than language quality. The crawler and entity
-extractor are research components, not a production ingestion service.
+The decoder is intentionally untrained. Its generated tokens are only a check
+of the architecture and inference path, not a demonstration of language
+quality. The crawler and entity extractor are also research components; they
+will need more defensive handling before they are suitable for a production
+ingestion service.
